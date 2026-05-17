@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Law Receptionist — 60s Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0A0C10;font-family:'Sora',sans-serif}
+
+:root{
+  --gold:#C9A55A;
+  --gold-lt:#F0D898;
+  --gold-dk:#8A6A2A;
+  --navy:#0A0C10;
+  --navy2:#11141C;
+  --navy3:#181D28;
+  --slate:#8892A4;
+  --white:#F5F7FA;
+  --green:#22C55E;
+  --red:#EF4444;
+  --blue:#3B82F6;
+  --r:18px;
+}
+
+#stage{
+  width:100vw;height:100vh;
+  position:relative;overflow:hidden;
+  background:var(--navy);
+}
+
+/* ─── PARTICLE BG ─── */
+#particles{position:absolute;inset:0;pointer-events:none;z-index:0}
+
+/* ─── SCENE SYSTEM ─── */
+.scene{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;z-index:1;
+  transition:opacity 0.6s ease;
+}
+.scene.active{opacity:1;pointer-events:all}
+
+/* ─── PROGRESS BAR ─── */
+#progress-bar{
+  position:absolute;bottom:0;left:0;height:3px;
+  background:var(--gold);z-index:100;
+  transition:width 0.1s linear;
+  box-shadow:0 0 12px rgba(201,165,90,0.6);
+}
+#timer-label{
+  position:absolute;top:20px;right:24px;z-index:100;
+  font-size:13px;color:var(--slate);font-weight:500;letter-spacing:1px;
+}
+#scene-label{
+  position:absolute;top:20px;left:24px;z-index:100;
+  font-size:12px;color:var(--gold);font-weight:600;
+  letter-spacing:2px;text-transform:uppercase;
+  opacity:0.7;
+}
+
+/* ─── PLAY OVERLAY ─── */
+#play-overlay{
+  position:absolute;inset:0;z-index:200;
+  background:var(--navy);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;
+}
+#play-overlay h1{
+  font-family:'Libre Baskerville',serif;
+  font-size:clamp(28px,4vw,52px);color:var(--white);
+  text-align:center;line-height:1.2;letter-spacing:-1px;max-width:700px;
+}
+#play-overlay h1 em{font-style:italic;color:var(--gold)}
+#play-overlay p{font-size:16px;color:var(--slate);text-align:center;max-width:480px;line-height:1.7}
+#play-btn{
+  width:80px;height:80px;border-radius:50%;
+  background:var(--gold);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;color:var(--navy);
+  box-shadow:0 0 40px rgba(201,165,90,0.4);
+  transition:transform 0.2s,box-shadow 0.2s;
+}
+#play-btn:hover{transform:scale(1.08);box-shadow:0 0 60px rgba(201,165,90,0.6)}
+.lang-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.lang-pill{
+  padding:5px 14px;border-radius:100px;
+  border:1px solid rgba(201,165,90,0.3);
+  font-size:12px;color:var(--gold);font-weight:500;letter-spacing:0.5px;
+}
+#voice-note{font-size:13px;color:var(--slate);margin-top:8px;text-align:center;opacity:0.7}
+
+/* ─── SUBTITLE BAR ─── */
+#subtitle{
+  position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+  z-index:50;max-width:820px;width:90%;
+  text-align:center;
+  font-size:clamp(15px,2.2vw,20px);
+  color:var(--white);
+  font-weight:400;line-height:1.5;
+  background:rgba(10,12,16,0.75);
+  padding:14px 28px;border-radius:12px;
+  border:1px solid rgba(255,255,255,0.08);
+  backdrop-filter:blur(12px);
+  transition:opacity 0.3s;
+  min-height:56px;
+}
+#subtitle em{color:var(--gold);font-style:normal;font-weight:600}
+
+/* ─── SCENE 1: PAIN ─── */
+.headline{
+  font-family:'Libre Baskerville',serif;
+  font-size:clamp(32px,5vw,68px);
+  color:var(--white);text-align:center;
+  letter-spacing:-2px;line-height:1.1;
+  max-width:900px;
+}
+.headline em{color:var(--gold);font-style:italic}
+.subline{
+  font-size:clamp(14px,1.8vw,20px);
+  color:var(--slate);text-align:center;
+  line-height:1.7;max-width:580px;margin-top:20px;
+  font-weight:300;
+}
+
+/* ─── PAIN COUNTERS ─── */
+.pain-row{display:flex;gap:24px;margin-top:48px;flex-wrap:wrap;justify-content:center}
+.pain-stat{
+  background:var(--navy3);border:1px solid rgba(239,68,68,0.25);
+  border-radius:16px;padding:28px 32px;text-align:center;
+  animation:none;min-width:180px;
+}
+.pain-stat.animate{animation:shake-in 0.5s ease forwards}
+@keyframes shake-in{
+  0%{transform:translateY(20px);opacity:0}
+  60%{transform:translateY(-4px)}
+  100%{transform:translateY(0);opacity:1}
+}
+.pain-num{font-size:48px;font-weight:800;color:var(--red);letter-spacing:-2px;line-height:1}
+.pain-desc{font-size:13px;color:var(--slate);margin-top:8px;font-weight:400}
+
+/* ─── CHAOS SCENE ─── */
+.chaos-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;
+  max-width:700px;width:90%;
+}
+.chaos-card{
+  background:var(--navy3);border-radius:14px;
+  border:1px solid rgba(255,255,255,0.07);
+  padding:20px;
+  opacity:0;transform:scale(0.9);
+  transition:opacity 0.4s,transform 0.4s;
+}
+.chaos-card.show{opacity:1;transform:scale(1)}
+.chaos-icon{font-size:28px;margin-bottom:10px}
+.chaos-title{font-size:16px;font-weight:600;color:var(--white);margin-bottom:6px}
+.chaos-sub{font-size:13px;color:var(--slate);line-height:1.5}
+.chaos-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);
+  color:#FCA5A5;font-size:11px;font-weight:600;padding:3px 10px;
+  border-radius:100px;margin-top:10px;letter-spacing:0.3px;
+}
+
+/* ─── CALL SCENE ─── */
+.call-wrap{
+  display:flex;gap:48px;align-items:flex-start;
+  max-width:900px;width:95%;
+}
+.caller-side, .ai-side{flex:1}
+
+.phone-ring-wrap{
+  background:var(--navy3);border-radius:24px;
+  border:1px solid rgba(255,255,255,0.1);
+  padding:28px;text-align:center;
+}
+.phone-avatar{
+  width:72px;height:72px;border-radius:50%;
+  background:linear-gradient(135deg,#2D3748,#4A5568);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin:0 auto 14px;
+  position:relative;
+}
+.ring-pulse{
+  position:absolute;inset:-6px;border-radius:50%;
+  border:2px solid var(--gold);
+  animation:ring 1.2s ease-out infinite;
+  opacity:0;
+}
+.ring-pulse:nth-child(2){animation-delay:0.4s}
+.ring-pulse:nth-child(3){animation-delay:0.8s}
+@keyframes ring{0%{transform:scale(1);opacity:0.8}100%{transform:scale(1.5);opacity:0}}
+.caller-name{font-size:18px;font-weight:600;color:var(--white);margin-bottom:4px}
+.caller-sub{font-size:13px;color:var(--slate)}
+.call-status{
+  margin-top:16px;display:inline-flex;align-items:center;gap:6px;
+  padding:6px 16px;border-radius:100px;
+  font-size:13px;font-weight:600;
+}
+.status-ringing{background:rgba(59,130,246,0.15);color:#93C5FD;border:1px solid rgba(59,130,246,0.3)}
+.status-connected{background:rgba(34,197,94,0.15);color:#86EFAC;border:1px solid rgba(34,197,94,0.3)}
+
+/* ─── AI PANEL ─── */
+.ai-panel{
+  background:var(--navy3);border-radius:24px;
+  border:1px solid rgba(201,165,90,0.2);
+  overflow:hidden;
+}
+.ai-header{
+  background:rgba(201,165,90,0.08);
+  border-bottom:1px solid rgba(201,165,90,0.15);
+  padding:18px 24px;display:flex;align-items:center;gap:14px;
+}
+.ai-avatar{
+  width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(135deg,#C9A55A,#E8C87A);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;flex-shrink:0;
+  box-shadow:0 0 20px rgba(201,165,90,0.3);
+}
+.ai-name{font-size:15px;font-weight:600;color:var(--white)}
+.ai-role{font-size:12px;color:var(--gold);margin-top:2px;letter-spacing:0.5px}
+.ai-live{
+  margin-left:auto;display:flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:600;color:#86EFAC;
+}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#22C55E;animation:blink 1s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* ─── TRANSCRIPT ─── */
+.transcript{padding:20px;display:flex;flex-direction:column;gap:12px;min-height:260px}
+.t-line{
+  display:flex;gap:10px;align-items:flex-start;
+  opacity:0;transform:translateY(8px);
+  transition:opacity 0.4s,transform 0.4s;
+}
+.t-line.show{opacity:1;transform:translateY(0)}
+.t-who{
+  font-size:11px;font-weight:700;padding:3px 8px;
+  border-radius:6px;white-space:nowrap;flex-shrink:0;margin-top:2px;
+  letter-spacing:0.5px;
+}
+.who-client{background:rgba(59,130,246,0.15);color:#93C5FD}
+.who-ai{background:rgba(201,165,90,0.15);color:var(--gold)}
+.t-text{font-size:14px;color:var(--white);line-height:1.55;font-weight:300}
+
+.typing-row{display:flex;gap:6px;padding:4px 0}
+.td{width:8px;height:8px;border-radius:50%;background:var(--gold);opacity:0.4;animation:tdot 1s ease infinite}
+.td:nth-child(2){animation-delay:0.15s}
+.td:nth-child(3){animation-delay:0.3s}
+@keyframes tdot{0%,60%,100%{opacity:0.4;transform:scale(1)}30%{opacity:1;transform:scale(1.3)}}
+
+/* ─── VOICE WAVEFORM ─── */
+.waveform{
+  display:flex;align-items:center;gap:3px;height:32px;
+  padding:0 24px 16px;justify-content:center;
+}
+.wave-bar{
+  width:3px;border-radius:2px;background:var(--gold);opacity:0.4;
+  animation:wave 0.8s ease infinite;
+}
+.wave-bar.active{opacity:0.9}
+@keyframes wave{
+  0%,100%{height:4px}
+  50%{height:24px}
+}
+
+/* ─── BOOKING CONFIRMED ─── */
+.booking-card{
+  background:var(--navy3);border-radius:20px;
+  border:1px solid rgba(34,197,94,0.3);
+  padding:28px 32px;max-width:460px;width:90%;
+  text-align:center;
+  opacity:0;transform:scale(0.85);
+  transition:opacity 0.5s,transform 0.5s;
+}
+.booking-card.show{opacity:1;transform:scale(1)}
+.booking-check{
+  width:64px;height:64px;border-radius:50%;
+  background:rgba(34,197,94,0.15);border:2px solid var(--green);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin:0 auto 18px;
+  animation:pop-in 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes pop-in{0%{transform:scale(0)}100%{transform:scale(1)}}
+.booking-title{font-size:22px;font-weight:700;color:var(--white);margin-bottom:6px}
+.booking-sub{font-size:14px;color:var(--slate);margin-bottom:20px}
+.booking-detail{
+  background:rgba(255,255,255,0.04);border-radius:12px;
+  padding:16px;text-align:left;display:flex;flex-direction:column;gap:10px;
+}
+.bd-row{display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.bd-label{color:var(--slate);font-weight:400}
+.bd-val{color:var(--white);font-weight:500}
+
+/* ─── FEATURES REVEAL ─── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:860px;width:95%;margin-top:32px}
+.feat-card{
+  background:var(--navy3);border-radius:14px;
+  border:1px solid rgba(255,255,255,0.07);
+  padding:24px 20px;
+  opacity:0;transform:translateY(16px);
+  transition:opacity 0.4s,transform 0.4s;
+}
+.feat-card.show{opacity:1;transform:translateY(0)}
+.feat-icon-w{
+  width:40px;height:40px;border-radius:10px;
+  background:rgba(201,165,90,0.1);border:1px solid rgba(201,165,90,0.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;margin-bottom:12px;
+}
+.feat-title{font-size:15px;font-weight:600;color:var(--white);margin-bottom:6px}
+.feat-desc{font-size:13px;color:var(--slate);line-height:1.6}
+
+/* ─── LANGUAGE SCENE ─── */
+.lang-orbit{position:relative;width:340px;height:340px;flex-shrink:0}
+.lang-center{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:90px;height:90px;border-radius:50%;
+  background:linear-gradient(135deg,#C9A55A,#E8C87A);
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;
+  box-shadow:0 0 40px rgba(201,165,90,0.4);
+  z-index:2;
+}
+.orbit-ring{
+  position:absolute;top:50%;left:50%;
+  border-radius:50%;border:1px solid rgba(201,165,90,0.15);
+  transform:translate(-50%,-50%);
+}
+.lang-node{
+  position:absolute;
+  background:var(--navy3);border:1px solid rgba(201,165,90,0.25);
+  border-radius:100px;padding:7px 16px;
+  font-size:13px;font-weight:600;color:var(--gold);
+  white-space:nowrap;
+  opacity:0;animation:orbit-in 0.5s ease forwards;
+}
+@keyframes orbit-in{0%{opacity:0;transform:scale(0.5)}100%{opacity:1;transform:scale(1)}}
+
+/* ─── CTA SCENE ─── */
+.cta-wrap{text-align:center}
+.cta-wrap h2{
+  font-family:'Libre Baskerville',serif;
+  font-size:clamp(28px,4vw,56px);
+  color:var(--white);letter-spacing:-1.5px;line-height:1.15;margin-bottom:16px;
+}
+.cta-wrap h2 em{color:var(--gold);font-style:italic}
+.cta-wrap p{font-size:18px;color:var(--slate);max-width:500px;margin:0 auto 36px;line-height:1.7;font-weight:300}
+.cta-btn{
+  display:inline-block;background:var(--gold);color:var(--navy);
+  padding:18px 48px;border-radius:100px;
+  font-size:17px;font-weight:700;letter-spacing:0.3px;
+  border:none;cursor:pointer;
+  box-shadow:0 8px 32px rgba(201,165,90,0.35);
+  animation:pulse-cta 2s ease infinite;
+}
+@keyframes pulse-cta{0%,100%{box-shadow:0 8px 32px rgba(201,165,90,0.35)}50%{box-shadow:0 8px 48px rgba(201,165,90,0.6)}}
+.trust-row{display:flex;gap:28px;justify-content:center;margin-top:28px;flex-wrap:wrap}
+.trust-item{font-size:13px;color:var(--slate);display:flex;align-items:center;gap:6px}
+.trust-check{color:var(--green);font-weight:700}
+
+/* ─── CONTROLS ─── */
+#controls{
+  position:absolute;bottom:16px;right:20px;z-index:100;
+  display:flex;gap:10px;align-items:center;
+}
+#restart-btn{
+  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);
+  color:var(--slate);padding:6px 14px;border-radius:100px;
+  font-size:12px;cursor:pointer;font-family:'Sora',sans-serif;
+  transition:all 0.2s;
+}
+#restart-btn:hover{background:rgba(255,255,255,0.14);color:var(--white)}
+#mute-btn{
+  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);
+  color:var(--slate);padding:6px 14px;border-radius:100px;
+  font-size:12px;cursor:pointer;font-family:'Sora',sans-serif;
+  transition:all 0.2s;
+}
+#mute-btn:hover{background:rgba(255,255,255,0.14);color:var(--white)}
+
+/* ─── GRID LINES BG ─── */
+.grid-bg{
+  position:absolute;inset:0;z-index:0;
+  background-image:
+    linear-gradient(rgba(201,165,90,0.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(201,165,90,0.04) 1px,transparent 1px);
+  background-size:60px 60px;
+  pointer-events:none;
+}
+
+.scene-bg-glow{
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%, rgba(201,165,90,0.06), transparent);
+}
+
+/* Word highlight animation */
+@keyframes word-flash{
+  0%{color:var(--white);text-shadow:none}
+  50%{color:var(--gold);text-shadow:0 0 20px rgba(201,165,90,0.5)}
+  100%{color:var(--white);text-shadow:none}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="grid-bg"></div>
+  <div class="scene-bg-glow"></div>
+  <canvas id="particles"></canvas>
+
+  <div id="scene-label">LEXAI RECEPTIONIST</div>
+  <div id="timer-label">0:00 / 1:00</div>
+  <div id="progress-bar" style="width:0%"></div>
+  <div id="subtitle"></div>
+
+  <div id="controls">
+    <button id="mute-btn">🔊 Voice On</button>
+    <button id="restart-btn">↺ Restart</button>
+  </div>
+
+  <!-- ═══ PLAY OVERLAY ═══ -->
+  <div id="play-overlay">
+    <div class="lang-pills">
+      <span class="lang-pill">English</span>
+      <span class="lang-pill">Español</span>
+      <span class="lang-pill">Français</span>
+      <span class="lang-pill">العربية</span>
+      <span class="lang-pill">中文</span>
+      <span class="lang-pill">Deutsch</span>
+      <span class="lang-pill">हिंदी</span>
+    </div>
+    <h1>Your Law Firm is<br><em>Losing Clients</em> Right Now</h1>
+    <p>A 60-second demo showing how AI picks up every call, books every appointment, and speaks any language — 24/7, no exceptions.</p>
+    <button id="play-btn">▶</button>
+    <div id="voice-note">🔊 Enable sound for the best experience — AI voice narration included</div>
+  </div>
+
+  <!-- ═══ SCENE 1: PAIN HEADLINE ═══ -->
+  <div class="scene" id="s1">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
+      <h1 class="headline" id="s1-h">Every Missed Call is a<br><em>Case Walking Away</em></h1>
+      <p class="subline" id="s1-sub">Law firms are overwhelmed. Phones ring, DMs pour in, and no one is there to answer. Clients don't wait — they call the next firm on the list.</p>
+    </div>
+  </div>
+
+  <!-- ═══ SCENE 2: PAIN STATS ═══ -->
+  <div class="scene" id="s2">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
+      <h1 class="headline" style="font-size:clamp(22px,3vw,40px);margin-bottom:0">The Numbers Don't Lie</h1>
+      <div class="pain-row">
+        <div class="pain-stat" id="ps1">
+          <div class="pain-num">62%</div>
+          <div class="pain-desc">of calls go unanswered<br>during peak hours</div>
+        </div>
+        <div class="pain-stat" id="ps2">
+          <div class="pain-num">3 min</div>
+          <div class="pain-desc">is all clients wait before<br>calling a competitor</div>
+        </div>
+        <div class="pain-stat" id="ps3">
+          <div class="pain-num">£8,400</div>
+          <div class="pain-desc">average monthly revenue<br>lost per law firm</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCENE 3: CHAOS ═══ -->
+  <div class="scene" id="s3">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:24px">
+      <h1 class="headline" style="font-size:clamp(20px,2.8vw,38px)">Sound Familiar?</h1>
+      <div class="chaos-grid">
+        <div class="chaos-card" id="cc1">
+          <div class="chaos-icon">📞</div>
+          <div class="chaos-title">Phones ringing constantly</div>
+          <div class="chaos-sub">Your receptionist is on a call. Three more are holding. Two hang up.</div>
+          <div class="chaos-badge">❌ Lost client</div>
+        </div>
+        <div class="chaos-card" id="cc2">
+          <div class="chaos-icon">🌙</div>
+          <div class="chaos-title">After-hours? No one answers</div>
+          <div class="chaos-sub">Urgent enquiries at 7pm. Nobody picks up. They find a firm that does.</div>
+          <div class="chaos-badge">❌ Lost client</div>
+        </div>
+        <div class="chaos-card" id="cc3">
+          <div class="chaos-icon">💬</div>
+          <div class="chaos-title">DMs sit unread for hours</div>
+          <div class="chaos-sub">Instagram, WhatsApp, email — messages pile up with zero response.</div>
+          <div class="chaos-badge">❌ Lost client</div>
+        </div>
+        <div class="chaos-card" id="cc4">
+          <div class="chaos-icon">🌍</div>
+          <div class="chaos-title">Language barriers</div>
+          <div class="chaos-sub">Non-English speakers can't communicate. They leave. You never know.</div>
+          <div class="chaos-badge">❌ Lost client</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCENE 4: SOLUTION INTRO ═══ -->
+  <div class="scene" id="s4">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:16px">
+      <div style="font-size:12px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:600">Introducing</div>
+      <h1 class="headline">Meet <em>LexAI</em><br>Your Law Firm's<br>24/7 AI Receptionist</h1>
+      <p class="subline">Picks up every call. Replies to every DM. Books every appointment. Speaks any language. Never takes a day off.</p>
+    </div>
+  </div>
+
+  <!-- ═══ SCENE 5: LIVE CALL ═══ -->
+  <div class="scene" id="s5">
+    <div style="position:relative;z-index:1;width:90%;max-width:860px">
+      <div style="font-size:12px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:600;text-align:center;margin-bottom:20px">Live Call Demo</div>
+      <div class="call-wrap">
+        <div class="caller-side">
+          <div class="phone-ring-wrap">
+            <div class="phone-avatar" id="phone-avatar">
+              <div class="ring-pulse"></div>
+              <div class="ring-pulse"></div>
+              <div class="ring-pulse"></div>
+              <span>👤</span>
+            </div>
+            <div class="caller-name">James Thornton</div>
+            <div class="caller-sub">Potential Client — Needs Urgent Advice</div>
+            <div class="call-status status-ringing" id="call-status">● Calling...</div>
+          </div>
+          <div style="margin-top:16px;background:var(--navy3);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,0.07)">
+            <div style="font-size:11px;color:var(--slate);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">It's 11:47 PM</div>
+            <div style="font-size:13px;color:var(--white);line-height:1.6">The office is closed. No receptionist. No voicemail picked up.</div>
+            <div style="margin-top:10px;font-size:13px;color:#86EFAC;font-weight:500">→ LexAI picks up in 2 seconds</div>
+          </div>
+        </div>
+        <div class="ai-side">
+          <div class="ai-panel">
+            <div class="ai-header">
+              <div class="ai-avatar">⚖️</div>
+              <div>
+                <div class="ai-name">LexAI Receptionist</div>
+                <div class="ai-role">AI Legal Intake Specialist</div>
+              </div>
+              <div class="ai-live"><div class="live-dot"></div>LIVE</div>
+            </div>
+            <div class="transcript" id="transcript"></div>
+            <div class="waveform" id="waveform">
+              <div class="wave-bar" style="animation-delay:0s"></div>
+              <div class="wave-bar" style="animation-delay:0.1s"></div>
+              <div class="wave-bar" style="animation-delay:0.2s"></div>
+              <div class="wave-bar" style="animation-delay:0.05s"></div>
+              <div class="wave-bar" style="animation-delay:0.15s"></div>
+              <div class="wave-bar" style="animation-delay:0.25s"></div>
+              <div class="wave-bar" style="animation-delay:0.08s"></div>
+              <div class="wave-bar" style="animation-delay:0.18s"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCENE 6: BOOKING CONFIRMED ═══ -->
+  <div class="scene" id="s6">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:24px">
+      <div style="font-size:12px;color:var(--green);letter-spacing:3px;text-transform:uppercase;font-weight:600">Appointment Confirmed</div>
+      <div class="booking-card" id="booking-card">
+        <div class="booking-check">✓</div>
+        <div class="booking-title">Booking Confirmed!</div>
+        <div class="booking-sub">LexAI handled the entire call — no human needed</div>
+        <div class="booking-detail">
+          <div class="bd-row"><span class="bd-label">Client</span><span class="bd-val">James Thornton</span></div>
+          <div class="bd-row"><span class="bd-label">Matter</span><span class="bd-val">Employment Dispute</span></div>
+          <div class="bd-row"><span class="bd-label">Date</span><span class="bd-val">Tomorrow, 10:00 AM</span></div>
+          <div class="bd-row"><span class="bd-label">Solicitor</span><span class="bd-val">Sarah Mitchell</span></div>
+          <div class="bd-row"><span class="bd-label">Language</span><span class="bd-val">English ✓</span></div>
+          <div class="bd-row"><span class="bd-label">Time taken</span><span class="bd-val" style="color:var(--green)">2 min 14 sec</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCENE 7: LANGUAGES ═══ -->
+  <div class="scene" id="s7">
+    <div style="position:relative;z-index:1;display:flex;align-items:center;gap:64px;flex-wrap:wrap;justify-content:center">
+      <div style="max-width:380px">
+        <div style="font-size:12px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:600;margin-bottom:16px">Any Language. Any Time.</div>
+        <h2 style="font-family:'Libre Baskerville',serif;font-size:clamp(24px,3vw,42px);color:var(--white);letter-spacing:-1px;line-height:1.2;margin-bottom:16px">LexAI Speaks Your <em style="color:var(--gold)">Client's</em> Language</h2>
+        <p style="font-size:15px;color:var(--slate);line-height:1.7;font-weight:300">Whether your client speaks Arabic, Mandarin, Spanish or Polish — LexAI switches language automatically, ensuring no client ever feels lost or unheard.</p>
+        <div style="margin-top:20px;padding:14px 18px;background:rgba(201,165,90,0.08);border-radius:12px;border:1px solid rgba(201,165,90,0.2);font-size:13px;color:var(--gold)">
+          🌍 Supports 40+ languages — detects automatically
+        </div>
+      </div>
+      <div class="lang-orbit">
+        <div class="orbit-ring" style="width:280px;height:280px"></div>
+        <div class="orbit-ring" style="width:180px;height:180px"></div>
+        <div class="lang-center">🤖</div>
+        <div class="lang-node" id="ln1" style="top:10px;left:50%;transform:translateX(-50%);animation-delay:0.1s">🇬🇧 English</div>
+        <div class="lang-node" id="ln2" style="top:50px;right:0px;animation-delay:0.25s">🇪🇸 Español</div>
+        <div class="lang-node" id="ln3" style="bottom:50px;right:0px;animation-delay:0.4s">🇫🇷 Français</div>
+        <div class="lang-node" id="ln4" style="bottom:10px;left:50%;transform:translateX(-50%);animation-delay:0.55s">🇸🇦 Arabic</div>
+        <div class="lang-node" id="ln5" style="bottom:50px;left:0px;animation-delay:0.7s">🇨🇳 中文</div>
+        <div class="lang-node" id="ln6" style="top:50px;left:0px;animation-delay:0.85s">🇩🇪 Deutsch</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCENE 8: FEATURES ═══ -->
+  <div class="scene" id="s8">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
+      <div style="font-size:12px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:600;margin-bottom:12px">Everything Covered</div>
+      <h2 style="font-family:'Libre Baskerville',serif;font-size:clamp(22px,3vw,40px);color:var(--white);letter-spacing:-1px;text-align:center;margin-bottom:4px">LexAI Handles It All</h2>
+      <div class="feat-grid">
+        <div class="feat-card" id="fc1">
+          <div class="feat-icon-w">📞</div>
+          <div class="feat-title">Answers Every Call</div>
+          <div class="feat-desc">Picks up in 2 seconds — day, night, weekend, holiday. No call ever goes unanswered.</div>
+        </div>
+        <div class="feat-card" id="fc2">
+          <div class="feat-icon-w">💬</div>
+          <div class="feat-title">Replies to All DMs</div>
+          <div class="feat-desc">Instagram, WhatsApp, email — responds instantly across every channel.</div>
+        </div>
+        <div class="feat-card" id="fc3">
+          <div class="feat-icon-w">📅</div>
+          <div class="feat-title">Books Appointments</div>
+          <div class="feat-desc">Qualifies the client, selects the right solicitor, and confirms the booking automatically.</div>
+        </div>
+        <div class="feat-card" id="fc4">
+          <div class="feat-icon-w">🌍</div>
+          <div class="feat-title">40+ Languages</div>
+          <div class="feat-desc">Detects and switches language automatically. No interpreter needed.</div>
+        </div>
+        <div class="feat-card" id="fc5">
+          <div class="feat-icon-w">⚖️</div>
+          <div class="feat-title">Legal Intake Expert</div>
+          <div class="feat-desc">Understands legal matters — personal injury, family law, employment, immigration and more.</div>
+        </div>
+        <div class="feat-card" id="fc6">
+          <div class="feat-icon-w">📊</div>
+          <div class="feat-title">Real-Time Dashboard</div>
+          <div class="feat-desc">See every call, DM, and booking in a live dashboard. Never miss a lead again.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCENE 9: CTA ═══ -->
+  <div class="scene" id="s9">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">
+      <div class="cta-wrap">
+        <div style="font-size:12px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:600;margin-bottom:16px">Stop Losing Clients</div>
+        <h2>Ready to Never Miss<br>a Client <em>Again?</em></h2>
+        <p>LexAI is live in your law firm within 24 hours. No long setup. No technical team needed.</p>
+        <button class="cta-btn">Book a Free Demo Today →</button>
+        <div class="trust-row">
+          <span class="trust-item"><span class="trust-check">✓</span> 14-day free trial</span>
+          <span class="trust-item"><span class="trust-check">✓</span> No credit card needed</span>
+          <span class="trust-item"><span class="trust-check">✓</span> Live in 24 hours</span>
+          <span class="trust-item"><span class="trust-check">✓</span> 40+ languages</span>
+        </div>
+        <div style="margin-top:28px;font-size:13px;color:var(--slate)">
+          Trusted by 200+ law firms across the UK & Europe
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOTAL = 60000;
+let startTime, raf, muted = false, voices = [], selectedVoice = null, aiVoice = null;
+const synth = window.speechSynthesis;
+
+function loadVoices(){
+  voices = synth.getVoices();
+  aiVoice = voices.find(v=>v.lang.startsWith('en')&&v.name.toLowerCase().includes('female'))
+    || voices.find(v=>v.lang.startsWith('en-GB'))
+    || voices.find(v=>v.lang.startsWith('en'))
+    || voices[0];
+  selectedVoice = aiVoice;
+}
+loadVoices();
+if(synth.onvoiceschanged!==undefined) synth.onvoiceschanged = loadVoices;
+
+function speak(text, rate=1.05, pitch=1.05, vol=0.9){
+  if(muted||!text) return;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = rate; u.pitch = pitch; u.volume = vol;
+  if(selectedVoice) u.voice = selectedVoice;
+  synth.speak(u);
+}
+
+// ─── SUBTITLE ENGINE ───
+const subtitleEl = document.getElementById('subtitle');
+let subtitleQ = [];
+let subtitleTimer = null;
+function queueSubtitle(text, delay, dur=3500){
+  subtitleQ.push({text,delay,dur});
+}
+function runSubtitleQ(){
+  subtitleQ.forEach(({text,delay,dur})=>{
+    setTimeout(()=>{
+      subtitleEl.innerHTML = text;
+      subtitleEl.style.opacity='1';
+    },delay);
+    setTimeout(()=>{
+      subtitleEl.style.opacity='0';
+    },delay+dur-200);
+  });
+}
+
+// ─── SCENE MANAGER ───
+const scenes = ['s1','s2','s3','s4','s5','s6','s7','s8','s9'];
+let activeScene = null;
+function showScene(id){
+  if(activeScene) document.getElementById(activeScene).classList.remove('active');
+  document.getElementById(id).classList.add('active');
+  activeScene = id;
+  document.getElementById('scene-label').textContent = 'LEXAI — '+id.replace('s','SCENE ');
+}
+
+// ─── TIMELINE ───
+const timeline = [
+  // Scene 1: Pain headline  0-6s
+  {t:0,fn:()=>{
+    showScene('s1');
+    speak("Right now, your law firm is missing calls. Missing clients. Missing revenue. And you don't even know it's happening.",1.0,1.05);
+    queueSubtitle('Every missed call is a client walking away — to your competitor.',0,4000);
+    queueSubtitle('<em>Law firms lose an average of £8,400 every month</em> just from unanswered phones.',4200,5000);
+  }},
+  // Scene 2: Stats  6-13s
+  {t:6200,fn:()=>{
+    showScene('s2');
+    speak("The numbers are brutal. Sixty-two percent of calls go unanswered during peak hours. Clients wait just three minutes before they call someone else.",1.05,1.05);
+    setTimeout(()=>{ document.getElementById('ps1').classList.add('animate') },400);
+    setTimeout(()=>{ document.getElementById('ps2').classList.add('animate') },1000);
+    setTimeout(()=>{ document.getElementById('ps3').classList.add('animate') },1600);
+    queueSubtitle('62% of calls go unanswered. Clients don\'t wait.',0,3500);
+    queueSubtitle('<em>£8,400</em> per month, per firm — lost to missed calls and slow replies.',3700,4500);
+  }},
+  // Scene 3: Chaos  13-22s
+  {t:13000,fn:()=>{
+    showScene('s3');
+    speak("Phones ringing and nobody there. After-hours calls going straight to voicemail. DMs sitting unread for days. Clients in other languages who can't even explain what they need.",1.05,1.05);
+    [['cc1',300],['cc2',1200],['cc3',2100],['cc4',3000]].forEach(([id,d])=>{
+      setTimeout(()=>document.getElementById(id).classList.add('show'),d);
+    });
+    queueSubtitle('Phones ring. DMs pile up. After-hours — nobody answers.',0,3500);
+    queueSubtitle('Clients in other languages give up and find a firm who can help them.',3700,4200);
+    queueSubtitle('Every one of these moments is <em>revenue walking out the door</em>.',8000,3500);
+  }},
+  // Scene 4: Solution  22-27s
+  {t:22000,fn:()=>{
+    showScene('s4');
+    speak("Introducing LexAI. Your law firm's AI receptionist. It picks up every call, replies to every message, books every appointment, and speaks any language your client needs. Twenty-four seven. No exceptions.",1.05,1.08);
+    queueSubtitle('Introducing <em>LexAI</em> — your AI receptionist, built for law firms.',0,3500);
+    queueSubtitle('Every call answered. Every DM replied to. Every appointment booked. <em>24/7.</em>',3700,4500);
+  }},
+  // Scene 5: Call starts  27-43s
+  {t:27500,fn:()=>{
+    showScene('s5');
+    const transcript = document.getElementById('transcript');
+    transcript.innerHTML='';
+    document.getElementById('call-status').className='call-status status-ringing';
+    document.getElementById('call-status').textContent='● Calling...';
+    const waveBars = document.querySelectorAll('.wave-bar');
+    waveBars.forEach(b=>b.classList.remove('active'));
+
+    const lines = [
+      {who:'ai',label:'LexAI',t:1200,text:"Good evening, you've reached Harrison & Mitchell Solicitors. I'm LexAI, how can I help you tonight?"},
+      {who:'client',label:'James',t:4500,text:"Hi, I — I urgently need to speak to a solicitor. I've been unfairly dismissed from my job today."},
+      {who:'ai',label:'LexAI',t:7500,text:"I'm so sorry to hear that, James. Unfair dismissal is exactly what our employment team handles. Can I take a few details and book you in for first thing tomorrow?"},
+      {who:'client',label:'James',t:11500,text:"Yes please. That would be really helpful."},
+      {who:'ai',label:'LexAI',t:13500,text:"Perfect. I have Sarah Mitchell available tomorrow at 10am. She specialises in employment law. Shall I confirm that for you, James?"},
+      {who:'client',label:'James',t:17000,text:"Yes, please book that. Thank you so much."},
+      {who:'ai',label:'LexAI',t:19000,text:"Done! I've confirmed your appointment for tomorrow at 10am with Sarah Mitchell. You'll receive a confirmation text shortly. You're in good hands, James."},
+    ];
+    lines.forEach(({who,label,t,text})=>{
+      setTimeout(()=>{
+        if(t===1200){
+          document.getElementById('call-status').className='call-status status-connected';
+          document.getElementById('call-status').textContent='● Connected';
+          waveBars.forEach(b=>b.classList.add('active'));
+        }
+        const el=document.createElement('div');
+        el.className='t-line';
+        el.innerHTML=`<span class="t-who ${who==='ai'?'who-ai':'who-client'}">${label}</span><span class="t-text">${text}</span>`;
+        transcript.appendChild(el);
+        transcript.scrollTop=transcript.scrollHeight;
+        setTimeout(()=>el.classList.add('show'),50);
+        if(who==='ai'&&!muted){
+          speak(text,1.05,1.1);
+        }
+      },t);
+    });
+    queueSubtitle('Client calls at 11:47 PM. Office is closed. <em>LexAI picks up in 2 seconds.</em>',0,4000);
+    queueSubtitle('"Good evening — I\'m LexAI, how can I help you tonight?"',4200,4000);
+    queueSubtitle('LexAI understands the case, qualifies the client, and offers the right solicitor.',8500,4000);
+    queueSubtitle('<em>Appointment booked. Confirmation sent. Client saved.</em> — All in under 2 minutes.',13000,5000);
+  }},
+  // Scene 6: Booking confirmed  43-48s
+  {t:43500,fn:()=>{
+    showScene('s6');
+    speak("Appointment confirmed. James Thornton, employment dispute, tomorrow at ten a.m. with Sarah Mitchell. The entire intake — handled by AI, in two minutes, at midnight.",1.0,1.05);
+    setTimeout(()=>document.getElementById('booking-card').classList.add('show'),400);
+    queueSubtitle('<em>Booking confirmed</em> — zero human involvement, full client experience.',0,3500);
+    queueSubtitle('Complete intake done in 2 minutes 14 seconds. At midnight. Automatically.',3700,4000);
+  }},
+  // Scene 7: Languages  48-53s
+  {t:48500,fn:()=>{
+    showScene('s7');
+    speak("And LexAI speaks any language. Arabic, Mandarin, Spanish, Polish, French — it detects automatically and switches instantly. No interpreter. No lost client. Every person heard.",1.05,1.05);
+    ['ln1','ln2','ln3','ln4','ln5','ln6'].forEach((id,i)=>{
+      document.getElementById(id).style.animationDelay=(i*0.18)+'s';
+    });
+    queueSubtitle('LexAI speaks <em>40+ languages</em> — detects and switches automatically.',0,3500);
+    queueSubtitle('Arabic, Mandarin, Spanish, French, Polish, Hindi — <em>every client heard.</em>',3700,4000);
+  }},
+  // Scene 8: Features  53-57s
+  {t:53500,fn:()=>{
+    showScene('s8');
+    speak("Calls, DMs, bookings, languages — LexAI handles everything. Live in your firm within twenty-four hours.",1.05,1.05);
+    [['fc1',200],['fc2',450],['fc3',700],['fc4',950],['fc5',1200],['fc6',1450]].forEach(([id,d])=>{
+      setTimeout(()=>document.getElementById(id).classList.add('show'),d);
+    });
+    queueSubtitle('Calls answered. DMs replied to. Appointments booked. <em>40+ languages.</em>',0,3000);
+    queueSubtitle('Live in your law firm in <em>24 hours</em>. No tech team needed.',3200,3500);
+  }},
+  // Scene 9: CTA  57-60s
+  {t:57500,fn:()=>{
+    showScene('s9');
+    speak("Stop losing clients to missed calls. Book a free demo today and have LexAI live in your firm tomorrow.",1.0,1.05);
+    queueSubtitle('Stop losing clients. <em>Book your free demo today.</em>',0,5000);
+  }},
+];
+
+// ─── PROGRESS & TICK ───
+function tick(now){
+  const elapsed = now - startTime;
+  const pct = Math.min((elapsed/TOTAL)*100,100);
+  document.getElementById('progress-bar').style.width=pct+'%';
+  const secs = Math.min(Math.floor(elapsed/1000),60);
+  document.getElementById('timer-label').textContent=`0:${secs<10?'0':''}${secs} / 1:00`;
+  if(elapsed < TOTAL+500) raf=requestAnimationFrame(t=>tick(t));
+}
+
+// ─── PARTICLES ───
+const canvas=document.getElementById('particles');
+const ctx=canvas.getContext('2d');
+let pts=[];
+function resizeCv(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;initPts()}
+function initPts(){
+  pts=[];
+  for(let i=0;i<60;i++){
+    pts.push({
+      x:Math.random()*canvas.width,y:Math.random()*canvas.height,
+      vx:(Math.random()-0.5)*0.3,vy:(Math.random()-0.5)*0.3,
+      r:Math.random()*1.5+0.5,a:Math.random()*0.4+0.1
+    });
+  }
+}
+function animPts(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  pts.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0||p.x>canvas.width)p.vx*=-1;
+    if(p.y<0||p.y>canvas.height)p.vy*=-1;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(201,165,90,${p.a})`;ctx.fill();
+  });
+  requestAnimationFrame(animPts);
+}
+window.addEventListener('resize',resizeCv);
+resizeCv();animPts();
+
+// ─── START ───
+function startVideo(){
+  document.getElementById('play-overlay').style.display='none';
+  subtitleEl.innerHTML='';
+  startTime = performance.now();
+  timeline.forEach(({t,fn})=>setTimeout(fn,t));
+  runSubtitleQ();
+  raf=requestAnimationFrame(t=>tick(t));
+}
+
+document.getElementById('play-btn').addEventListener('click',startVideo);
+
+document.getElementById('restart-btn').addEventListener('click',()=>{
+  synth.cancel();
+  cancelAnimationFrame(raf);
+  subtitleQ=[];
+  scenes.forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.querySelectorAll('.pain-stat').forEach(el=>el.classList.remove('animate'));
+  document.querySelectorAll('.chaos-card').forEach(el=>el.classList.remove('show'));
+  document.querySelectorAll('.feat-card').forEach(el=>el.classList.remove('show'));
+  document.getElementById('booking-card').classList.remove('show');
+  document.getElementById('progress-bar').style.width='0%';
+  document.getElementById('subtitle').innerHTML='';
+  startVideo();
+});
+
+document.getElementById('mute-btn').addEventListener('click',()=>{
+  muted=!muted;
+  if(muted){synth.cancel();document.getElementById('mute-btn').textContent='🔇 Voice Off';}
+  else{document.getElementById('mute-btn').textContent='🔊 Voice On';}
+});
+</script>
+</body>
+</html>
